@@ -344,6 +344,13 @@ const isFileIdentity = (node: t.Node | undefined): boolean => {
   );
 };
 
+/** An absolute HTTP(S)/WebSocket URL, or an absolute or relative path. */
+const isRequestUrlLiteral = (value: string): boolean =>
+  /^(?:https?|wss?):\/\//iu.test(value) ||
+  value.startsWith("/") ||
+  value.startsWith("./") ||
+  value.startsWith("../");
+
 /** Select the literal URL argument for recognized network callees. */
 export const endpointArgument = (
   name: string,
@@ -362,8 +369,14 @@ export const endpointArgument = (
     ["get", "post", "put", "patch", "delete", "request"].some(
       (method) => name === method || name.endsWith(`.${method}`),
     )
-  )
-    return stringValue(args[0]);
+  ) {
+    // These names also read maps, headers, form data, and query parameters,
+    // so only a URL or path literal identifies an HTTP client request.
+    const value = stringValue(args[0]);
+    return value !== undefined && isRequestUrlLiteral(value)
+      ? value
+      : undefined;
+  }
   if (name.endsWith("loadURL")) return stringValue(args[0]);
   return undefined;
 };

@@ -174,6 +174,30 @@ describe("web bundle static-analysis parity", () => {
     );
   });
 
+  it("reads HTTP-method-named calls as requests only for URL literals", () => {
+    const result = analyzeCapturedWebBundle(
+      inspection(`
+        axios.get("https://api.example.test/users");
+        axios.post("/api/login", {});
+        client.delete("../items/1");
+        http.request("HTTP://legacy.example.test/");
+        new Map().get("cache-key");
+        cache.delete("cache-key");
+        new URLSearchParams(location.search).get("q");
+        response.headers.get("content-type");
+        formData.get("file");
+      `),
+    );
+    expect(
+      result.observations.endpoints.map(({ value }) => value).sort(),
+    ).toEqual([
+      "../items/1",
+      "/api/login",
+      "HTTP://legacy.example.test/",
+      "https://api.example.test/users",
+    ]);
+  });
+
   it("recognizes loadURL endpoints like static analysis", () => {
     const result = analyzeCapturedWebBundle(
       inspection('window.win.loadURL("https://embedded.test/app");'),
